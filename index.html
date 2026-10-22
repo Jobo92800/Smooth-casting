@@ -36,7 +36,7 @@ button{cursor:pointer}
 .tab{border:0;background:transparent;padding:8px 16px;border-radius:999px;font-weight:600;font-size:14.5px;color:var(--muted);white-space:nowrap;transition:background .15s,color .15s}
 .tab:hover{color:var(--fg)}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
-.sync{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap;padding-left:12px;display:flex;align-items:center;gap:6px}
+.sync{font-size:12.5px;color:var(--muted);white-space:nowrap;padding-left:12px;display:flex;align-items:center;gap:6px}
 .sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good)}
 .sync.bad{color:var(--bad)}.sync.bad::before{background:var(--bad)}
 
@@ -139,6 +139,23 @@ tr.off .tag{background:var(--sunk);color:var(--off)}
 .hint{font-size:12.5px;color:var(--muted);margin:0}
 .danger{color:var(--bad);background:none;border:0;font-size:13px;text-decoration:underline}
 
+
+.me{margin-left:auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:13.5px;font-weight:600;color:var(--accent);white-space:nowrap}
+.me + .sync{margin-left:8px}
+.tally{display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.tally-big{display:flex;gap:6px;flex-wrap:wrap}
+.who-tag{font-size:13px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 10px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.sect.mine{border:1.5px solid var(--accent-soft)}
+.sect.recap{background:var(--sunk);box-shadow:none}
+.shared-title{font-size:15px;font-weight:700;margin:8px 0 -6px;color:var(--muted)}
+.shared-title span{font-weight:400}
+.rtab th:first-child,.rtab td:first-child{padding-left:10px}
+.rtab td{background:var(--surface)}
+.rtab tr.notes td{font-size:13.5px;color:var(--muted);padding-top:0;background:var(--surface)}
+.rtab tr.notes p{margin:2px 0}
+.rtab tr.notes b{color:var(--fg);font-weight:600}
+.grade{font-weight:600;text-align:center;padding-inline:6px}
+.g-TB{color:var(--good)}.g-B{color:var(--accent)}.g-AB{color:var(--warn)}.g-AT{color:var(--bad)}
 /* questions */
 .qhead{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
 .draw{background:var(--accent-soft);border-radius:16px;padding:18px 20px;display:grid;gap:4px}
@@ -165,6 +182,7 @@ dialog form{display:grid;gap:14px}
     <button class="tab" role="tab" id="t-planning" data-tab="planning">Planning</button>
     <button class="tab" role="tab" id="t-fiches" data-tab="fiches">Fiches candidats</button>
     <button class="tab" role="tab" id="t-questions" data-tab="questions">Questions</button>
+    <button class="me" id="me-btn" type="button">Qui êtes-vous ?</button>
     <span class="sync" id="sync">Chargement…</span>
   </div>
 </nav>
@@ -226,6 +244,15 @@ dialog form{display:grid;gap:14px}
   </form>
 </dialog>
 
+<dialog id="me-dlg">
+  <form id="me-form" method="dialog">
+    <h3 style="margin:0">Qui êtes-vous ?</h3>
+    <p class="hint">Votre prénom signe vos fiches. Chaque membre du jury a sa propre fiche par candidat, et tout le monde voit le récap.</p>
+    <div class="fld"><label for="me-in">Prénom du juré</label><input id="me-in" type="text" autocomplete="given-name" required></div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn" type="submit">C'est moi</button></div>
+  </form>
+</dialog>
+
 <dialog id="key-dlg">
   <form id="key-form" method="dialog">
     <h3 style="margin:0">Mot de passe de l'appli</h3>
@@ -268,13 +295,31 @@ const Q = [
 ];
 
 /* ---------- état ---------- */
-const S = {list:[], extras:{}, fiches:{}, filter:"all", query:"", current:null, mode:"airtable"};
+const S = {list:[], extras:{}, fiches:{}, evals:{}, filter:"all", query:"", current:null, me:""};
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const $ = id => document.getElementById(id);
 function allCands(){ return S.list; }
 function active(){ return allCands().filter(c => !c.off); }
 function cand(id){ return allCands().find(c => c.id === id); }
 function display(c){ return [c.prenom, c.nom].filter(Boolean).join(" ") || "Sans nom"; }
+const norm = s => String(s || "").trim().toLowerCase();
+
+/* ---------- membre du jury ---------- */
+function lsGet(k){ try{ return localStorage.getItem(k) || ""; }catch(e){ return ""; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+S.me = lsGet("smooth-jury");
+function renderMe(){ $("me-btn").textContent = S.me ? "Jury : " + S.me : "Qui êtes-vous ?"; }
+function askMe(){
+  $("me-in").value = S.me;
+  try{ $("me-dlg").showModal(); }catch(e){ $("me-dlg").setAttribute("open",""); }
+}
+$("me-btn").onclick = askMe;
+$("me-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("me-in").value.trim(); if(!v) return;
+  S.me = v; lsSet("smooth-jury", v); $("me-dlg").close(); renderMe();
+  renderAll(); if(S.current) openFiche(S.current);
+});
 
 /* ---------- Airtable (via la fonction Netlify) ---------- */
 const API = "/.netlify/functions/casting";
@@ -282,14 +327,17 @@ const SLOT_NAME = {s1:"Samedi 8h–12h", s2:"Samedi 13h–19h", s3:"Dimanche 8h�
 const SLOT_KEY = Object.fromEntries(Object.entries(SLOT_NAME).map(([k,v]) => [v,k]));
 const AVIS_OUT = {oui:"Retenu", peut:"À revoir", non:"Non retenu"};
 const AVIS_IN = Object.fromEntries(Object.entries(AVIS_OUT).map(([k,v]) => [v,k]));
-// clé de la fiche -> champ Airtable
-const F = {cdc:"CDC", nom:"Nom", prenom:"Prénom", age:"Âge", ville:"Lieu de résidence", present:"Présent", avis:"Avis final",
+// partagé (table Candidats)
+const F = {nom:"Nom", prenom:"Prénom", age:"Âge", ville:"Lieu de résidence", present:"Présent", decision:"Décision finale",
   comedie:"Comédie/Théâtre", danse:"Danse", danseAutre:"Danse – autre", compagnie:"Membre d'une autre compagnie", statut:"Statut",
-  motivation:"Motivation et passion", experiences:"Expérience(s)", diplomes:"Diplôme(s)", adaptabilite:"Adaptabilité et collaboration",
-  disponibilites:"Disponibilités", technique:"Technique", originalite:"Originalité du style", interpretation:"Interprétation artistique",
-  coherence:"Cohérence avec Pop-Corn Show", obsSolo:"Observations solo", obsGroupe:"Observations groupe", autresSpectacles:"Capacité autres spectacles"};
+  experiences:"Expérience(s)", diplomes:"Diplôme(s)", disponibilites:"Disponibilités"};
+// propre à chaque juré (table Évaluations)
+const E = {avis:"Avis", motivation:"Motivation et passion", adaptabilite:"Adaptabilité et collaboration",
+  technique:"Technique", originalite:"Originalité du style", interpretation:"Interprétation artistique", coherence:"Cohérence avec Pop-Corn Show",
+  obsSolo:"Observations solo", obsGroupe:"Observations groupe", autresSpectacles:"Capacité autres spectacles"};
+const isEval = k => k in E;
 function toAirtable(k, v){
-  if(k === "avis") return AVIS_OUT[v] || null;
+  if(k === "avis" || k === "decision") return AVIS_OUT[v] || null;
   if(k === "compagnie") return v === "oui" ? "Oui" : v === "non" ? "Non" : null;
   if(k === "age"){ const n = parseInt(v, 10); return isNaN(n) ? null : n; }
   if(k === "present" || k === "comedie") return !!v;
@@ -297,23 +345,31 @@ function toAirtable(k, v){
   if(["statut","technique","originalite","interpretation","coherence"].includes(k)) return v || null;
   return v == null ? "" : String(v);
 }
+function readFields(f, map){
+  const o = {};
+  for(const [k, name] of Object.entries(map)){
+    let v = f[name];
+    if(k === "avis" || k === "decision") v = AVIS_IN[v] || "";
+    else if(k === "compagnie") v = v === "Oui" ? "oui" : v === "Non" ? "non" : "";
+    if(v !== undefined) o[k] = v;
+  }
+  if(f["Dernière modification"]) o.updatedAt = f["Dernière modification"];
+  return o;
+}
 function fromRecord(r){
   const f = r.fields || {};
+  const annule = f["Inscription"] === "Annulé";
   const c = {id:r.id, slot:SLOT_KEY[f["Créneau"]] || "na", nom:f["Nom"] || "", prenom:f["Prénom"] || "", age:f["Âge"] ?? "", ville:f["Lieu de résidence"] || "",
-    note:f["Inscription"] === "Annulé" ? "" : (f["Note planning"] || ""), off:f["Inscription"] === "Annulé" ? (f["Note planning"] || "Annulé") : "", ordre:f["Ordre"] ?? 999};
-  const fi = {};
-  for(const [k, name] of Object.entries(F)){
-    let v = f[name];
-    if(k === "avis") v = AVIS_IN[v] || "";
-    else if(k === "compagnie") v = v === "Oui" ? "oui" : v === "Non" ? "non" : "";
-    if(v !== undefined) fi[k] = v;
-  }
-  if(f["Dernière modification"]) fi.updatedAt = f["Dernière modification"];
-  return {c, fi};
+    note: annule ? "" : (f["Note planning"] || ""), off: annule ? (f["Note planning"] || "Annulé") : "", ordre:f["Ordre"] ?? 999};
+  return {c, fi:readFields(f, F)};
 }
-function getKey(){ try{ return localStorage.getItem("smooth-casting-key") || ""; }catch(e){ return ""; } }
-async function api(method, body, query){
-  const res = await fetch(API + (query || ""), {method, headers:{"content-type":"application/json","x-casting-key":getKey()}, body: body ? JSON.stringify(body) : undefined});
+function fromEval(r){
+  const f = r.fields || {};
+  return {id:r.id, cid:(f["Candidat"] || [])[0], jury:f["Jury"] || "?", ...readFields(f, E)};
+}
+function getKey(){ return lsGet("smooth-casting-key"); }
+async function api(method, body){
+  const res = await fetch(API, {method, headers:{"content-type":"application/json","x-casting-key":getKey()}, body: body ? JSON.stringify(body) : undefined});
   if(res.status === 401){ askKey(); throw {code:"auth"}; }
   if(!res.ok) throw {code:"http", status:res.status, text: await res.text()};
   return res.json();
@@ -323,70 +379,95 @@ function askKey(){
   try{ $("key-dlg").showModal(); }catch(e){ $("key-dlg").setAttribute("open",""); }
 }
 $("key-form").addEventListener("submit", e => {
-  e.preventDefault();
-  try{ localStorage.setItem("smooth-casting-key", $("key-in").value.trim()); }catch(err){}
-  $("key-dlg").close(); load();
+  e.preventDefault(); lsSet("smooth-casting-key", $("key-in").value.trim()); $("key-dlg").close(); load();
 });
 
 function setSync(t, bad){ const el = $("sync"); el.textContent = t; el.classList.toggle("bad", !!bad); }
-const timers = {}, pending = {};
+const timers = {}, pending = {}, creating = {};
 let saving = Promise.resolve();
+const hasPending = () => Object.keys(pending).some(k => pending[k].size) || Object.keys(timers).length;
+
+function myEval(cid){ return (S.evals[cid] || []).find(e => norm(e.jury) === norm(S.me)); }
+function ensureMyEval(cid){
+  let e = myEval(cid);
+  if(!e){ e = {id:null, cid, jury:S.me}; (S.evals[cid] = S.evals[cid] || []).push(e); }
+  return e;
+}
 
 async function load(){
   try{
     const data = await api("GET");
-    const list = [], fiches = {};
+    const list = [], fiches = {}, evals = {};
     data.records.forEach(r => { const {c, fi} = fromRecord(r); list.push(c); fiches[c.id] = fi; });
+    (data.evals || []).forEach(r => { const e = fromEval(r); if(e.cid) (evals[e.cid] = evals[e.cid] || []).push(e); });
     list.sort((a,b) => (a.ordre - b.ordre) || display(a).localeCompare(display(b), "fr"));
-    // garder les modifications locales pas encore envoyées
-    for(const id of Object.keys(pending)) if(S.fiches[id]) fiches[id] = S.fiches[id];
-    if(S.current && timers[S.current] && S.fiches[S.current]) fiches[S.current] = S.fiches[S.current];
-    S.list = list; S.fiches = fiches;
+    // garder ce qui n'est pas encore envoyé
+    for(const key of Object.keys(pending).concat(Object.keys(timers))){
+      const [t, cid] = key.split(":");
+      if(t === "c" && S.fiches[cid]) fiches[cid] = S.fiches[cid];
+      if(t === "e"){ const mine = myEval(cid); if(mine){ evals[cid] = (evals[cid] || []).filter(e => norm(e.jury) !== norm(S.me)); evals[cid].push(mine); } }
+    }
+    S.list = list; S.fiches = fiches; S.evals = evals;
     renderAll();
-    if(S.current && !timers[S.current] && !pending[S.current]) fillForm({...S.fiches[S.current]}, true);
-    setSync(Object.keys(pending).length ? "Modifications en attente…" : "Synchronisé avec Airtable");
+    if(S.current){ if(!hasPending()) fillCurrent(true); renderRecap(); }
+    setSync(hasPending() ? "Enregistrement…" : "Synchronisé avec Airtable");
   }catch(e){
     if(e.code !== "auth") setSync("Hors ligne · réessai automatique", true);
   }
 }
 async function initStore(){
-  setSync("Chargement…");
-  renderAll();
+  renderMe(); setSync("Chargement…"); renderAll();
+  if(!S.me) askMe();
   await load();
-  setInterval(() => { if(document.visibilityState === "visible") { flushAll(); load(); } }, 20000);
+  setInterval(() => { if(document.visibilityState === "visible"){ flushAll(); load(); } }, 15000);
   document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") load(); });
 }
-function saveFiche(id, key){
-  (pending[id] = pending[id] || new Set()).add(key);
-  clearTimeout(timers[id]);
+function save(cid, key){
+  const t = isEval(key) ? "e:" + cid : "c:" + cid;
+  (pending[t] = pending[t] || new Set()).add(key);
+  clearTimeout(timers[t]);
   setSync("Enregistrement…");
-  timers[id] = setTimeout(() => { delete timers[id]; flush(id); }, 700);
+  timers[t] = setTimeout(() => { delete timers[t]; flush(t); }, 700);
 }
-function flushAll(){ Object.keys(pending).forEach(id => { if(!timers[id]) flush(id); }); }
-function flush(id){
-  const keys = pending[id]; if(!keys || !keys.size) return;
+function flushAll(){ Object.keys(pending).forEach(t => { if(!timers[t]) flush(t); }); }
+function flush(t){
+  const keys = pending[t]; if(!keys || !keys.size) return;
+  const [kind, cid] = t.split(":");
+  if(kind === "e" && creating[cid]) return; // la création en cours renverra le reste
+  delete pending[t];
+  const restore = () => { const set = pending[t] = pending[t] || new Set(); keys.forEach(k => set.add(k)); setSync("Hors ligne · modifications gardées, réessai automatique", true); };
+  const done = () => { markSaved(); setSync(hasPending() ? "Enregistrement…" : "Synchronisé avec Airtable"); };
+  if(kind === "c"){
+    const fields = {};
+    keys.forEach(k => { fields[F[k]] = toAirtable(k, (S.fiches[cid] || {})[k]); });
+    if(keys.has("nom") || keys.has("prenom")){ const c = cand(cid); if(c) fields["Candidat"] = display(c); }
+    saving = saving.then(() => api("PATCH", {table:"cands", id:cid, fields})).then(done).catch(restore);
+    return;
+  }
+  const ev = ensureMyEval(cid);
   const fields = {};
-  keys.forEach(k => { fields[F[k]] = toAirtable(k, (S.fiches[id] || {})[k]); });
-  if(keys.has("nom") || keys.has("prenom")){ const c = cand(id); if(c) fields["Candidat"] = display(c); }
-  delete pending[id];
-  saving = saving.then(() => api("PATCH", {id, fields}))
-    .then(() => { markSaved(); setSync(Object.keys(pending).length ? "Enregistrement…" : "Synchronisé avec Airtable"); })
-    .catch(() => {
-      const set = pending[id] = pending[id] || new Set(); keys.forEach(k => set.add(k));
-      setSync("Hors ligne · modifications gardées, réessai automatique", true);
-    });
+  keys.forEach(k => { fields[E[k]] = toAirtable(k, ev[k]); });
+  if(ev.id){
+    saving = saving.then(() => api("PATCH", {table:"evals", id:ev.id, fields})).then(done).catch(restore);
+  } else {
+    const c = cand(cid);
+    Object.assign(fields, {"Évaluation": display(c) + " – " + S.me, "Candidat":[cid], "Jury":S.me});
+    creating[cid] = saving = saving.then(() => api("POST", {table:"evals", fields}))
+      .then(r => { ev.id = r.id; delete creating[cid]; done(); if(pending[t] && !timers[t]) flush(t); })
+      .catch(() => { delete creating[cid]; restore(); });
+  }
 }
 function markSaved(){ const el = $("saved"); if(el){ const d = new Date(); el.textContent = "Enregistré à " + d.getHours() + "h" + String(d.getMinutes()).padStart(2,"0"); } }
 async function addCand(c){
   setSync("Ajout…");
   try{
-    const r = await api("POST", {fields:{"Candidat":display(c), "Nom":c.nom, "Prénom":c.prenom, "Créneau":SLOT_NAME[c.slot], "Inscription":"Attendu", "Note planning":"Ajouté sur place"}});
+    const r = await api("POST", {table:"cands", fields:{"Candidat":display(c), "Nom":c.nom, "Prénom":c.prenom, "Créneau":SLOT_NAME[c.slot], "Inscription":"Attendu", "Note planning":"Ajouté sur place"}});
     const {c:nc, fi} = fromRecord(r); S.list.push(nc); S.fiches[nc.id] = fi; renderAll();
     setSync("Synchronisé avec Airtable");
   }catch(e){ setSync("Ajout impossible, vérifiez la connexion", true); }
 }
 async function delCand(){}
-window.addEventListener("beforeunload", e => { if(Object.keys(pending).length || Object.keys(timers).length){ flushAll(); e.preventDefault(); } });
+window.addEventListener("beforeunload", e => { if(hasPending()){ flushAll(); e.preventDefault(); } });
 
 /* ---------- onglets ---------- */
 const TABS = ["planning","fiches","questions"];
@@ -420,7 +501,7 @@ function slotTable(k){
   const on = list.filter(c => !c.off), off = list.filter(c => c.off);
   const row = (c,i) => c.off
     ? `<tr class="off"><td class="num">–</td><td class="last">${c.nom ? esc(c.nom) : '<span class="unk">non précisé</span>'}</td><td class="first">${esc(c.prenom)}</td><td class="note"><span class="tag">${esc(c.off)}</span> ${esc(c.note || "")}</td><td></td></tr>`
-    : `<tr class="row" tabindex="0" data-open="${esc(c.id)}" aria-label="Ouvrir la fiche de ${esc(display(c))}"><td class="num">${i+1}</td><td class="last">${c.nom ? esc(c.nom) : '<span class="unk">non précisé</span>'}</td><td class="first">${esc(c.prenom)}</td><td class="note">${esc(c.note || "")}</td><td class="go">${(S.fiches[c.id] || {}).avis ? avisPill(S.fiches[c.id]) : "›"}</td></tr>`;
+    : `<tr class="row" tabindex="0" data-open="${esc(c.id)}" aria-label="Ouvrir la fiche de ${esc(display(c))}"><td class="num">${i+1}</td><td class="last">${c.nom ? esc(c.nom) : '<span class="unk">non précisé</span>'}</td><td class="first">${esc(c.prenom)}</td><td class="note">${esc(c.note || "")}</td><td class="go">${(S.fiches[c.id] || {}).decision || tally(c.id).oui + tally(c.id).peut + tally(c.id).non ? statusPill(c.id) : "›"}</td></tr>`;
   return `<div class="slot"><div class="slot-head"><span class="time">${SLOTS[k].time}</span><span class="n">${on.length} candidat${on.length > 1 ? "s" : ""}</span></div>
   <div class="tbl"><table><thead><tr><th>#</th><th>Nom</th><th>Prénom</th><th>Note</th><th></th></tr></thead><tbody>
   ${on.map(row).join("")}${off.length ? `<tr class="sep"><td colspan="5">Annulé${off.length > 1 ? "s" : ""}</td></tr>` + off.map(row).join("") : ""}
@@ -428,26 +509,36 @@ function slotTable(k){
 }
 
 /* ---------- liste des fiches ---------- */
-const FILTERS = [["all","Tous"],["s1","Sam. matin"],["s2","Sam. aprèm"],["s3","Dim. matin"],["s4","Dim. aprèm"],["todo","À évaluer"]];
+const FILTERS = [["all","Tous"],["s1","Sam. matin"],["s2","Sam. aprèm"],["s3","Dim. matin"],["s4","Dim. aprèm"],["todo","Pas encore notés par moi"]];
 function renderFilters(){
   $("filters").innerHTML = FILTERS.map(([k,l]) => `<button class="fbtn" type="button" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join("");
 }
 $("filters").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if(!b) return; S.filter = b.dataset.f; renderFilters(); renderList(); });
 $("q").addEventListener("input", e => { S.query = e.target.value.trim().toLowerCase(); renderList(); });
 
-function evaluated(f){ return f && CRITERES.some(([k]) => f[k]); }
-function avisPill(f){
-  const a = f && f.avis;
-  if(a === "oui") return '<span class="pill oui">Retenu</span>';
-  if(a === "peut") return '<span class="pill peut">À revoir</span>';
-  if(a === "non") return '<span class="pill non">Non retenu</span>';
+function tally(cid){
+  const t = {oui:0, peut:0, non:0};
+  (S.evals[cid] || []).forEach(e => { if(t[e.avis] !== undefined) t[e.avis]++; });
+  return t;
+}
+function evaluated(cid){ const m = myEval(cid); return m && (m.avis || CRITERES.some(([k]) => m[k])); }
+const AVIS_LBL = {oui:"Retenu", peut:"À revoir", non:"Non retenu"};
+function avisPill(a, prefix){
+  if(AVIS_LBL[a]) return `<span class="pill ${a}">${prefix || ""}${AVIS_LBL[a]}</span>`;
   return '<span class="pill vide">Pas d\'avis</span>';
+}
+function statusPill(cid){
+  const f = S.fiches[cid] || {};
+  if(f.decision) return avisPill(f.decision, "Décision : ");
+  const t = tally(cid), n = t.oui + t.peut + t.non;
+  if(!n) return '<span class="pill vide">Pas d\'avis</span>';
+  return `<span class="tally" title="Avis du jury">${t.oui ? `<span class="pill oui">${t.oui} ✓</span>` : ""}${t.peut ? `<span class="pill peut">${t.peut} ?</span>` : ""}${t.non ? `<span class="pill non">${t.non} ✕</span>` : ""}</span>`;
 }
 function renderList(){
   const q = S.query;
   const list = active().filter(c => {
-    if(q && !display(c).toLowerCase().includes(q) && !(c.nom||"").toLowerCase().includes(q)) return false;
-    if(S.filter === "todo") return !evaluated(S.fiches[c.id]);
+    if(q && !display(c).toLowerCase().includes(q)) return false;
+    if(S.filter === "todo") return !evaluated(c.id);
     if(S.filter !== "all") return c.slot === S.filter;
     return true;
   });
@@ -460,14 +551,14 @@ function renderList(){
   $("groups").innerHTML = html || '<p class="empty">Aucun candidat ne correspond.</p>';
 }
 function card(c){
-  const f = S.fiches[c.id] || {};
+  const f = S.fiches[c.id] || {}, m = myEval(c.id) || {}, n = (S.evals[c.id] || []).length;
   const ini = ((c.prenom||"?")[0] + (c.nom ? c.nom[0] : "")).toUpperCase();
-  const g = CRITERES.map(([k]) => f[k] || "–").join(" · ");
+  const g = CRITERES.map(([k]) => m[k] || "–").join(" · ");
   return `<button class="card" type="button" data-open="${esc(c.id)}">
     <span class="av">${esc(ini)}</span>
     <span class="who"><div class="nm">${esc(display(c))}</div>
-      <div class="meta">${f.present ? '<span class="dot" title="Présent"></span>Présent ·' : ""}<span class="grades" title="Technique · Originalité · Interprétation · Cohérence">${g}</span></div></span>
-    ${avisPill(f)}</button>`;
+      <div class="meta">${f.present ? '<span class="dot" title="Présent"></span>Présent ·' : ""}<span class="grades" title="Mes notes : Technique · Originalité · Interprétation · Cohérence">${g}</span>${n ? ` · ${n} fiche${n > 1 ? "s" : ""}` : ""}</div></span>
+    ${statusPill(c.id)}</button>`;
 }
 $("groups").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if(b) openFiche(b.dataset.open); });
 function fromPlanning(id){ showTab("fiches"); openFiche(id); }
@@ -484,6 +575,7 @@ function txt(field, label, area){
 }
 function openFiche(id){
   const c = cand(id); if(!c) return;
+  if(!S.me){ askMe(); }
   S.current = id;
   const act = active(), idx = act.findIndex(x => x.id === id);
   const prev = act[idx-1], next = act[idx+1];
@@ -499,15 +591,31 @@ function openFiche(id){
    <div><div class="eyebrow">${SLOTS[c.slot].label}${c.note ? " · " + esc(c.note) : ""}</div>
      <h2>${esc(display(c))}</h2><span class="saved" id="saved"></span></div>
 
+   <section class="sect recap" id="recap"></section>
+
+   <section class="sect mine"><h3>Ma fiche <span class="who-tag">${esc(S.me || "?")}</span></h3>
+     <p class="hint">Visible par tout le jury dans le récap, modifiable seulement par vous.</p>
+     <div class="fld"><span class="lbl">Mon avis</span>${opts("avis",["oui","peut","non"],["Retenu","À revoir","Non retenu"],["oui","peut","non"])}</div>
+     <div>${CRITERES.map(([k,l]) => `<div class="rate"><span>${l}</span>${opts(k,NOTES)}</div>`).join("")}</div>
+     <p class="hint">AT · AB · B · TB</p>
+     ${txt("motivation","Motivation et passion pour la danse",1)}
+     ${txt("adaptabilite","Adaptabilité et collaboration",1)}
+     ${txt("obsSolo","Observations prestation solo",1)}
+     ${txt("obsGroupe","Observations prestation de groupe",1)}
+     ${txt("autresSpectacles","Capacité autres spectacles",1)}
+   </section>
+
+   <h3 class="shared-title">Infos communes <span>(partagées par tout le jury)</span></h3>
+
    <section class="sect"><h3>Le jour J</h3>
      <div class="grid2">
        <div class="fld"><span class="lbl">Présence</span>${opts("present",["1"],["Présent(e)"])}</div>
-       <div class="fld"><span class="lbl">Avis final</span>${opts("avis",["oui","peut","non"],["Retenu","À revoir","Non retenu"],["oui","peut","non"])}</div>
+       <div class="fld"><span class="lbl">Décision finale du jury</span>${opts("decision",["oui","peut","non"],["Retenu","À revoir","Non retenu"],["oui","peut","non"])}</div>
      </div>
    </section>
 
    <section class="sect"><h3>Identité</h3>
-     <div class="grid2">${txt("cdc","CDC")}${txt("nom","Nom")}${txt("prenom","Prénom")}${txt("age","Âge")}${txt("ville","Lieu de résidence")}</div>
+     <div class="grid2">${txt("nom","Nom")}${txt("prenom","Prénom")}${txt("age","Âge")}${txt("ville","Lieu de résidence")}</div>
    </section>
 
    <section class="sect"><h3>Compétence principale</h3>
@@ -520,33 +628,37 @@ function openFiche(id){
      </div>
    </section>
 
-   <section class="sect"><h3>Entretien</h3>
-     ${txt("motivation","Motivation et passion pour la danse",1)}
+   <section class="sect"><h3>Parcours</h3>
      ${txt("experiences","Expérience(s)",1)}
      ${txt("diplomes","Diplôme(s)",1)}
-     ${txt("adaptabilite","Adaptabilité et collaboration",1)}
      ${txt("disponibilites","Disponibilités",1)}
    </section>
-
-   <section class="sect"><h3>Évaluation solo</h3>
-     <p class="hint">AT · AB · B · TB</p>
-     <div>${CRITERES.map(([k,l]) => `<div class="rate"><span>${l}</span>${opts(k,NOTES)}</div>`).join("")}</div>
-     ${txt("obsSolo","Observations prestation solo",1)}
-   </section>
-
-   <section class="sect"><h3>Groupe &amp; suite</h3>
-     ${txt("obsGroupe","Observations prestation de groupe",1)}
-     ${txt("autresSpectacles","Capacité autres spectacles",1)}
-   </section>
-   ${S.extras[id] ? `<p><button class="danger" type="button" id="del">Supprimer ce candidat ajouté</button></p>` : ""}
   </div>`;
-  const f = S.fiches[id] || {};
-  fillForm({nom:c.nom, prenom:c.prenom, age:c.age, ville:c.ville, ...f}, false);
+  fillCurrent(false);
+  renderRecap();
   $("back").onclick = closeFiche;
-  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openFiche(b.dataset.open));
-  if($("del")) $("del").onclick = () => delCand(id);
-  if(f.updatedAt){ const d = new Date(f.updatedAt); $("saved").textContent = "Dernière modif. " + d.toLocaleDateString("fr-FR") + " à " + d.getHours() + "h" + String(d.getMinutes()).padStart(2,"0"); }
+  box.querySelectorAll(".fnav [data-open]").forEach(b => b.onclick = () => openFiche(b.dataset.open));
   window.scrollTo(0,0);
+}
+function currentData(){
+  const id = S.current, c = cand(id) || {};
+  return {nom:c.nom, prenom:c.prenom, age:c.age, ville:c.ville, ...(S.fiches[id] || {}), ...(myEval(id) || {})};
+}
+function fillCurrent(skipActive){ fillForm(currentData(), skipActive); }
+function renderRecap(){
+  const box = $("recap"); if(!box || !S.current) return;
+  const list = (S.evals[S.current] || []).filter(e => e.id || e.avis || CRITERES.some(([k]) => e[k]));
+  const t = tally(S.current), n = list.length;
+  if(!n){ box.innerHTML = `<h3>Récap du jury</h3><p class="hint">Aucune fiche remplie pour l'instant. Les fiches de chaque juré apparaîtront ici.</p>`; return; }
+  const sorted = list.slice().sort((a,b) => (norm(a.jury) === norm(S.me) ? -1 : norm(b.jury) === norm(S.me) ? 1 : a.jury.localeCompare(b.jury, "fr")));
+  const notes = e => [["motivation","Motivation"],["adaptabilite","Adaptabilité"],["obsSolo","Solo"],["obsGroupe","Groupe"],["autresSpectacles","Autres spectacles"]]
+    .filter(([k]) => e[k]).map(([k,l]) => `<p><b>${l} :</b> ${esc(e[k])}</p>`).join("");
+  box.innerHTML = `<h3>Récap du jury <span class="hint">· ${n} fiche${n > 1 ? "s" : ""}</span></h3>
+    <div class="tally-big">${t.oui ? `<span class="pill oui">${t.oui} Retenu</span>` : ""}${t.peut ? `<span class="pill peut">${t.peut} À revoir</span>` : ""}${t.non ? `<span class="pill non">${t.non} Non retenu</span>` : ""}${!(t.oui+t.peut+t.non) ? '<span class="pill vide">Pas encore d\'avis</span>' : ""}</div>
+    <div class="tbl"><table class="rtab"><thead><tr><th>Juré</th><th>Avis</th>${CRITERES.map(([k,l],i) => `<th title="${l}" class="grade">${["Tech.","Orig.","Interp.","Cohér."][i]}</th>`).join("")}</tr></thead><tbody>
+    ${sorted.map(e => `<tr><td class="last">${esc(e.jury)}${norm(e.jury) === norm(S.me) ? ' <span class="unk">(vous)</span>' : ""}</td><td>${AVIS_LBL[e.avis] ? avisPill(e.avis) : "–"}</td>${CRITERES.map(([k]) => `<td class="grade g-${esc(e[k] || "")}">${esc(e[k] || "–")}</td>`).join("")}</tr>
+      ${notes(e) ? `<tr class="notes"><td colspan="${2 + CRITERES.length}">${notes(e)}</td></tr>` : ""}`).join("")}
+    </tbody></table></div>`;
 }
 const MULTI = new Set(["danse"]), TOGGLE = new Set(["present","comedie"]);
 function fillForm(data, skipActive){
@@ -563,25 +675,28 @@ function fillForm(data, skipActive){
 }
 function patch(k, v){
   const id = S.current; if(!id) return;
+  if(isEval(k)){
+    if(!S.me){ askMe(); return; }
+    ensureMyEval(id)[k] = v; save(id, k); renderRecap(); return;
+  }
   const c = cand(id);
-  const base = S.fiches[id] || {nom:c.nom||"", prenom:c.prenom||"", age:c.age||"", ville:c.ville||""};
-  S.fiches[id] = {...base, [k]: v};
-  if(k === "nom" || k === "prenom"){ c[k] = v; saveFiche(id, k); const other = k === "nom" ? "prenom" : "nom"; if(S.fiches[id][other] === undefined){ S.fiches[id][other] = c[other]; } }
-  else saveFiche(id, k);
+  S.fiches[id] = {...(S.fiches[id] || {}), [k]: v};
+  if(k === "nom" || k === "prenom") c[k] = v;
+  save(id, k);
 }
 $("f-form").addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.field; if(k) patch(k, e.target.value); });
 $("f-form").addEventListener("click", e => {
   const b = e.target.closest(".opt[data-field]"); if(!b) return;
-  const k = b.dataset.field, v = b.dataset.val, cur = (S.fiches[S.current] || {})[k];
+  const k = b.dataset.field, v = b.dataset.val, cur = currentData()[k];
   let nv;
   if(MULTI.has(k)){ const arr = Array.isArray(cur) ? [...cur] : []; const i = arr.indexOf(v); i >= 0 ? arr.splice(i,1) : arr.push(v); nv = arr; }
   else if(TOGGLE.has(k)) nv = !cur;
   else nv = cur === v ? "" : v;
   patch(k, nv);
-  fillForm(S.fiches[S.current], true);
+  fillCurrent(true);
 });
 function closeFiche(){
-  S.current = null; $("f-form").hidden = true; $("f-form").innerHTML = ""; $("f-list").hidden = false; renderList();
+  S.current = null; $("f-form").hidden = true; $("f-form").innerHTML = ""; $("f-list").hidden = false; renderList(); renderPlanning();
 }
 
 /* ---------- ajout ---------- */
@@ -616,11 +731,14 @@ $("draw-btn").onclick = () => {
 };
 
 function exportCSV(){
-  const cols=[["Créneau",c=>SLOTS[c.slot].label],["Nom",(c,f)=>f.nom??c.nom],["Prénom",(c,f)=>f.prenom??c.prenom],["Âge",(c,f)=>f.age??c.age],["Lieu de résidence",(c,f)=>f.ville??c.ville],["CDC",(c,f)=>f.cdc],["Présent",(c,f)=>f.present?"Oui":""],["Avis",(c,f)=>({oui:"Retenu",peut:"À revoir",non:"Non retenu"})[f.avis]||""],["Comédie/Théâtre",(c,f)=>f.comedie?"Oui":""],["Danse",(c,f)=>(f.danse||[]).join(", ")],["Autre",(c,f)=>f.danseAutre],["Autre compagnie",(c,f)=>f.compagnie],["Statut",(c,f)=>f.statut],["Motivation",(c,f)=>f.motivation],["Expériences",(c,f)=>f.experiences],["Diplômes",(c,f)=>f.diplomes],["Adaptabilité",(c,f)=>f.adaptabilite],["Disponibilités",(c,f)=>f.disponibilites],["Technique",(c,f)=>f.technique],["Originalité",(c,f)=>f.originalite],["Interprétation",(c,f)=>f.interpretation],["Cohérence Pop-Corn Show",(c,f)=>f.coherence],["Obs. solo",(c,f)=>f.obsSolo],["Obs. groupe",(c,f)=>f.obsGroupe],["Autres spectacles",(c,f)=>f.autresSpectacles]];
+  const L = {oui:"Retenu", peut:"À revoir", non:"Non retenu"};
+  const cols=[["Créneau",c=>SLOTS[c.slot].label],["Nom",c=>c.nom],["Prénom",c=>c.prenom],["Âge",(c,f)=>f.age??c.age],["Lieu de résidence",(c,f)=>f.ville??c.ville],["Présent",(c,f)=>f.present?"Oui":""],["Décision finale",(c,f)=>L[f.decision]||""],["Comédie/Théâtre",(c,f)=>f.comedie?"Oui":""],["Danse",(c,f)=>(f.danse||[]).join(", ")],["Autre",(c,f)=>f.danseAutre],["Autre compagnie",(c,f)=>f.compagnie],["Statut",(c,f)=>f.statut],["Expériences",(c,f)=>f.experiences],["Diplômes",(c,f)=>f.diplomes],["Disponibilités",(c,f)=>f.disponibilites],
+    ["Juré",(c,f,e)=>e.jury],["Avis du juré",(c,f,e)=>L[e.avis]||""],["Technique",(c,f,e)=>e.technique],["Originalité",(c,f,e)=>e.originalite],["Interprétation",(c,f,e)=>e.interpretation],["Cohérence Pop-Corn Show",(c,f,e)=>e.coherence],["Motivation",(c,f,e)=>e.motivation],["Adaptabilité",(c,f,e)=>e.adaptabilite],["Obs. solo",(c,f,e)=>e.obsSolo],["Obs. groupe",(c,f,e)=>e.obsGroupe],["Autres spectacles",(c,f,e)=>e.autresSpectacles]];
   const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-  const lines=[cols.map(c=>q(c[0])).join(";")].concat(active().map(c=>{const f=S.fiches[c.id]||{};return cols.map(col=>q(col[1](c,f))).join(";");}));
-  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fiches-auditions-smooth.csv";document.body.appendChild(a);a.click();a.remove();
+  const rows=[];
+  active().forEach(c=>{const f=S.fiches[c.id]||{};const ev=(S.evals[c.id]||[]).filter(e=>e.id);(ev.length?ev:[{}]).forEach(e=>rows.push(cols.map(col=>q(col[1](c,f,e))).join(";")));});
+  const blob=new Blob(["﻿"+[cols.map(c=>q(c[0])).join(";")].concat(rows).join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fiches-jury-auditions-smooth.csv";document.body.appendChild(a);a.click();a.remove();
 }
 $("csv-btn").onclick=exportCSV;
 $("csv-btn").hidden=false;

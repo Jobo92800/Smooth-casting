@@ -1,7 +1,11 @@
 # Smooth – Casting
 
 Appli de jury pour les auditions Smooth by No-One : planning, fiches d'évaluation et questions du casting.
-Les données sont dans Airtable (base « Smooth - Casting », table « Candidats »).
+Les données sont dans Airtable (base « Smooth - Casting ») :
+- table « Candidats » : infos communes (identité, présence, compétences, parcours, décision finale) ;
+- table « Évaluations » : une fiche par juré et par candidat (avis, notes AT/AB/B/TB, observations).
+
+Chaque juré indique son prénom une fois par appareil ; la fiche d'un candidat affiche le récap de tous les jurés.
 
 ## Fonctionnement
 - `index.html` : l'appli (aucune donnée de candidat dans le code).
