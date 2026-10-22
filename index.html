@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>html,body{margin:0}body{font:14px/1.4 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+<title>Planning auditions Smooth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: appli de jury claire et calme — barre d'onglets en pilules, cartes blanches sur fond sauge très pâle, beaucoup d'air */
+:root{
+  --bg:#f5f7f4; --surface:#ffffff; --sunk:#f0f3ef; --fg:#26302b; --muted:#6b756f; --line:#e4e9e3;
+  --accent:#4f8571; --accent-soft:#e6f0eb; --on-accent:#ffffff;
+  --warn:#a7701c; --warn-soft:#fbf1df; --good:#2f7d55; --good-soft:#e2f2e8; --bad:#b4483c; --bad-soft:#fbe9e6; --off:#a3aba6;
+  --shadow:0 1px 2px rgba(38,48,43,.04),0 4px 14px rgba(38,48,43,.05);
+  --f-display:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg)}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.tabs-in{max-width:1080px;margin:0 auto;display:flex;gap:6px;align-items:center;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow-x:auto}
+.brand{font-weight:700;font-size:15px;margin-right:14px;white-space:nowrap;color:var(--fg)}
+.brand span{color:var(--accent)}
+.tab{border:0;background:transparent;padding:8px 16px;border-radius:999px;font-weight:600;font-size:14.5px;color:var(--muted);white-space:nowrap;transition:background .15s,color .15s}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.sync{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap;padding-left:12px;display:flex;align-items:center;gap:6px}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--good)}
+.sync.bad{color:var(--bad)}.sync.bad::before{background:var(--bad)}
+
+.wrap{max-width:1080px;margin:0 auto;padding-block:20px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:32px}
+header{display:grid;gap:8px}
+.eyebrow{font-size:13px;font-weight:500;color:var(--accent)}
+h1{font-weight:700;font-size:clamp(26px,4.4vw,36px);line-height:1.15;letter-spacing:-.015em;margin:0;text-wrap:balance}
+.sub{color:var(--muted);margin:0;max-width:62ch}
+.counts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{font-size:13px;padding:5px 12px;border-radius:999px;background:var(--surface);box-shadow:var(--shadow);color:var(--muted);font-variant-numeric:tabular-nums}
+.chip b{color:var(--fg);font-weight:700;margin-left:2px}
+
+/* planning */
+.day{display:grid;gap:14px}
+.day h2{font-weight:700;font-size:21px;letter-spacing:-.01em;margin:0;display:flex;align-items:baseline;gap:10px}
+.day h2 span{font-size:13.5px;color:var(--muted);font-weight:500}
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:18px;align-items:start}
+.slot{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.slot-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 18px 10px}
+.time{font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.n{font-size:12.5px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:3px 10px;border-radius:999px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{font-weight:500;font-size:12.5px;color:var(--muted);text-align:left;padding:6px 10px;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{padding-left:18px}
+th:last-child,td:last-child{padding-right:14px}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tr.row{cursor:pointer;transition:background .12s}
+tr.row:hover{background:var(--sunk)}
+tr.row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+td.num{color:var(--off);width:2.4em;font-variant-numeric:tabular-nums}
+td.last{font-weight:600}
+td.note{color:var(--muted);font-size:13px}
+td.go{width:1%;white-space:nowrap;text-align:right;color:var(--off)}
+.unk{color:var(--off);font-weight:400;font-style:italic}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+tr.off td{color:var(--off)}
+tr.off td.last,tr.off td.first{text-decoration:line-through}
+tr.off .tag{background:var(--sunk);color:var(--off)}
+.sep td{font-size:12px;font-weight:500;color:var(--muted);background:var(--sunk);padding-block:6px}
+.todo{background:var(--warn-soft);border-radius:16px;padding:18px 20px;display:grid;gap:10px}
+.todo h2{font-weight:700;font-size:18px;margin:0;color:var(--warn)}
+.todo ul{margin:0;padding-left:18px;display:grid;gap:7px}
+.foot{color:var(--muted);font-size:13px;max-width:75ch;margin:0}
+
+/* fiches : liste */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{flex:1 1 220px;min-width:0;padding:11px 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.search:focus{border-color:var(--accent);outline:none}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.fbtn{border:1px solid transparent;background:var(--surface);box-shadow:var(--shadow);border-radius:999px;padding:7px 14px;font-size:13.5px;color:var(--muted)}
+.fbtn[aria-pressed="true"]{background:var(--fg);color:var(--surface);box-shadow:none}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:999px;padding:9px 18px;font-weight:600;font-size:14px}
+.btn.ghost{background:var(--surface);color:var(--fg);border-color:var(--line)}
+.btn:disabled{opacity:.4;cursor:default}
+.group{display:grid;gap:10px}
+.group h3{font-weight:600;font-size:14px;color:var(--muted);margin:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:10px}
+.card{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;text-align:left;background:var(--surface);border:1px solid transparent;box-shadow:var(--shadow);border-radius:14px;padding:12px 14px;min-width:0;transition:border-color .15s,transform .15s}
+.card:hover{border-color:var(--accent-soft);transform:translateY(-1px)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:14px}
+.card .who{min-width:0}
+.card .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .meta{font-size:12.5px;color:var(--muted);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.grades{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.pill.oui{background:var(--good-soft);color:var(--good)}
+.pill.peut{background:var(--warn-soft);color:var(--warn)}
+.pill.non{background:var(--bad-soft);color:var(--bad)}
+.pill.vide{background:var(--sunk);color:var(--off);font-weight:500}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block}
+.empty{color:var(--muted);font-style:italic}
+
+/* fiche */
+.fiche{display:grid;gap:18px;max-width:820px}
+.fhead{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.fhead h2{font-weight:700;font-size:clamp(24px,4vw,32px);letter-spacing:-.015em;margin:2px 0 0}
+.fnav{display:flex;gap:6px;flex-wrap:wrap}
+.saved{font-size:12.5px;color:var(--muted)}
+.sect{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:20px;display:grid;gap:16px;min-width:0}
+.sect h3{font-weight:700;font-size:16.5px;margin:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}
+.fld{display:grid;gap:6px;min-width:0}
+.fld>label,.lbl{font-size:13px;font-weight:500;color:var(--muted)}
+.fld input[type=text],.fld input[type=number],.fld textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--sunk);transition:border-color .15s,background .15s}
+.fld input:focus,.fld textarea:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.fld textarea{min-height:78px;resize:vertical;line-height:1.5}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opt{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-size:14px;min-height:38px;transition:background .12s,border-color .12s}
+.opt:hover{border-color:var(--accent)}
+.opt[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.opt.oui[aria-pressed="true"]{background:var(--good);border-color:var(--good)}
+.opt.peut[aria-pressed="true"]{background:var(--warn);border-color:var(--warn)}
+.opt.non[aria-pressed="true"]{background:var(--bad);border-color:var(--bad)}
+.rate{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding-block:8px;border-bottom:1px solid var(--line)}
+.rate:last-child{border-bottom:0}
+.rate .opts .opt{min-width:50px;font-weight:600}
+@media (max-width:520px){.rate{grid-template-columns:1fr}}
+.hint{font-size:12.5px;color:var(--muted);margin:0}
+.danger{color:var(--bad);background:none;border:0;font-size:13px;text-decoration:underline}
+
+/* questions */
+.qhead{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+.draw{background:var(--accent-soft);border-radius:16px;padding:18px 20px;display:grid;gap:4px}
+.draw .lbl{color:var(--accent)}
+.draw p{margin:0;font-size:18px;font-weight:500;max-width:60ch}
+.qblock{display:grid;gap:14px}
+.qblock>h2{font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0}
+.qsec{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:18px 20px;display:grid;gap:10px}
+.qsec h3{font-weight:700;font-size:16px;margin:0}
+.qsec ol{margin:0;padding-left:24px;display:grid;gap:8px}
+.qsec li{max-width:72ch}
+.qsec li::marker{color:var(--off);font-size:13px}
+.qsec li.hl{background:var(--accent-soft);border-radius:8px;padding:3px 8px;margin-left:-8px}
+
+dialog{border:0;border-radius:18px;background:var(--surface);color:var(--fg);padding:22px;width:min(440px,calc(100% - 32px));box-shadow:0 20px 50px rgba(38,48,43,.18)}
+dialog::backdrop{background:rgba(38,48,43,.25)}
+dialog form{display:grid;gap:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-in" role="tablist">
+    <span class="brand">Smooth <span>·</span> Auditions</span>
+    <button class="tab" role="tab" id="t-planning" data-tab="planning">Planning</button>
+    <button class="tab" role="tab" id="t-fiches" data-tab="fiches">Fiches candidats</button>
+    <button class="tab" role="tab" id="t-questions" data-tab="questions">Questions</button>
+    <span class="sync" id="sync">Chargement…</span>
+  </div>
+</nav>
+
+<!-- ============ PLANNING ============ -->
+<main class="wrap" id="v-planning" hidden>
+<header>
+  <div class="eyebrow">Smooth by No-One · Saison 2027 · Proviedanse Sud, 12 rue Meyrueis, Montpellier</div>
+  <h1>Planning des auditions — 24 &amp; 25 octobre</h1>
+  <p class="sub">Les candidats sont convoqués par créneau (arrivée en début de créneau), pas à une heure individuelle. Les candidats et les fiches sont enregistrés dans Airtable (base Smooth - Casting) : tout ce qui est modifié ici ou dans Airtable apparaît sur tous les appareils.</p>
+  <div class="counts" id="counts"></div>
+</header>
+<div id="planning-days"></div>
+<p class="foot">Les noms en « non précisé » n'ont qu'un prénom dans Airtable : complétez la colonne Nom pour les afficher.</p>
+</main>
+
+<!-- ============ FICHES ============ -->
+<main class="wrap" id="v-fiches" hidden>
+  <div id="f-list">
+    <header style="margin-bottom:18px">
+      <div class="eyebrow">Fiche évaluation casting</div>
+      <h1>Fiches candidats</h1>
+      <p class="sub">Touchez un candidat pour ouvrir sa fiche. Tout s'enregistre automatiquement dans Airtable pendant que vous tapez.</p>
+    </header>
+    <div class="toolbar" style="margin-bottom:18px">
+      <input class="search" id="q" type="text" placeholder="Rechercher un nom…" autocomplete="off">
+      <div class="filters" id="filters"></div>
+      <button class="btn ghost" id="add-btn" type="button">+ Ajouter un candidat</button>
+      <button class="btn ghost" id="csv-btn" type="button" hidden>Exporter en CSV</button>
+    </div>
+    <div id="groups" style="display:grid;gap:22px"></div>
+  </div>
+  <div id="f-form" hidden></div>
+</main>
+
+<!-- ============ QUESTIONS ============ -->
+<main class="wrap" id="v-questions" hidden>
+  <div class="qhead">
+    <header>
+      <div class="eyebrow">Entretien individuel &amp; mises en situation</div>
+      <h1>Questions du casting</h1>
+    </header>
+    <button class="btn" id="draw-btn" type="button">Tirer une mise en situation au hasard</button>
+  </div>
+  <div class="draw" id="draw" hidden><span class="lbl" id="draw-lbl"></span><p id="draw-txt"></p></div>
+  <div id="qs" style="display:grid;gap:28px"></div>
+</main>
+
+<dialog id="add-dlg">
+  <form id="add-form" method="dialog">
+    <h3 style="margin:0">Ajouter un candidat</h3>
+    <div class="fld"><label for="a-prenom">Prénom</label><input id="a-prenom" type="text" required></div>
+    <div class="fld"><label for="a-nom">Nom</label><input id="a-nom" type="text"></div>
+    <div class="fld"><span class="lbl">Créneau</span><div class="opts" id="a-slot"></div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" type="button" id="a-cancel">Annuler</button>
+      <button class="btn" type="submit">Ajouter</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="key-dlg">
+  <form id="key-form" method="dialog">
+    <h3 style="margin:0">Mot de passe de l'appli</h3>
+    <p class="hint">Demandé une seule fois par appareil.</p>
+    <div class="fld"><label for="key-in">Mot de passe</label><input id="key-in" type="password" autocomplete="current-password" required></div>
+    <div style="display:flex;justify-content:flex-end"><button class="btn" type="submit">Entrer</button></div>
+  </form>
+</dialog>
+
+<script>
+/* ---------- données ---------- */
+const SLOTS = {
+  s1:{label:"Samedi 8h – 12h", day:"sat", time:"8h – 12h"},
+  s2:{label:"Samedi 13h – 19h", day:"sat", time:"13h – 19h"},
+  s3:{label:"Dimanche 8h – 12h", day:"sun", time:"8h – 12h"},
+  s4:{label:"Dimanche 13h – 18h", day:"sun", time:"13h – 18h"},
+  na:{label:"Créneau à définir", day:null, time:"À définir"}
+};
+const slug = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+const DANSES = ["Hip-hop","Classique","Modern-Jazz","Break-Dance","Contemporain","Latine"];
+const NOTES = ["AT","AB","B","TB"];
+const CRITERES = [["technique","Technique"],["originalite","Originalité du style"],["interpretation","Interprétation artistique"],["coherence","Cohérence avec Pop-Corn Show"]];
+
+const Q = [
+ {block:"Entretien individuel", secs:[
+  {t:"Pour commencer", q:["Présentez-vous.","Vie en collectivité ?"]},
+  {t:"1. Motivations & Passion", q:["Qu'est-ce qui vous passionne dans la danse ?","Quelles danses ou artistes vous inspirent ?","Pourquoi postulez-vous chez Smooth By No-one ?","C'est + un job ou une passion ?","Pourquoi pensez-vous que vous êtes le bon choix pour notre entreprise plutôt qu'un autre candidat ?","Si vous pouviez danser avec n'importe quel danseur ou chorégraphe, qui choisiriez-vous et pourquoi ?"]},
+  {t:"2. Style, Identité Artistique & Valeurs", q:["Comment décririez-vous votre style de danse en un mot et en quoi cela se reflète-t-il dans vos performances ?","Quelles valeurs sont essentielles pour vous en tant qu'artiste et comment les incarnez-vous dans votre travail et votre relation avec votre public ?","En dehors de la danse, quels sont vos autres intérêts et comment enrichissent-ils votre créativité en tant qu'artiste ?","Si vous pouviez changer quelque chose dans le monde de la danse, quelle serait cette chose et pourquoi ?"]},
+  {t:"3. Technique, Performance & Discipline", q:["Comment maintenir votre niveau de performance en danse ? Parlez de votre routine d'entraînement et de préparation avant un spectacle.","Comment es-tu, 15 minutes avant de rentrer sur scène ?","Comment gérez-vous le stress dans votre métier de danseur/danseuse et quelles sont vos aspirations à long terme dans ce domaine ?","Quelle est votre réaction face à la difficulté d'apprendre une nouvelle chorégraphie ou un nouveau mouvement ?"]},
+  {t:"4. Adaptabilité, Gestion d'imprévus & Résolution de problèmes", q:["Pourriez-vous partager une situation où vous avez dû vous adapter rapidement ou faire face à un changement imprévu dans un projet artistique ?","Pouvez-vous raconter un moment où vous avez dû improviser sur scène en raison d'un imprévu ? Comment avez-vous géré la situation ?","Imaginez que vous avez seulement 2 jours pour créer une chorégraphie complexe pour un spectacle. Comment planifiez-vous votre temps et les étapes à suivre pour une performance exceptionnelle ?"]},
+  {t:"5. Collaboration, Communication & Vie d'équipe", q:["Comment travaillez-vous en équipe avec d'autres danseurs/danseuses ?","Pourriez-vous partager une expérience où vous avez résolu un conflit au sein d'une équipe créative ?","Une soirée « création de chorégraphie » s'organise, es-tu présent ?"]},
+  {t:"6. Professionnalisme, Attitude & Savoir-être", q:["Cite un point fort et un point faible que tu emmènerais avec toi dans la troupe.","Comment te situes-tu face à la prise d'initiative ?","Que penses-tu de la hiérarchie d'une entreprise ?","Comment utilises-tu les outils mis à ta disposition ? (Google Drive)","Comment équilibrez-vous votre vie personnelle avec votre carrière de danseur/danseuse ? Avez-vous des stratégies spécifiques ?"]}
+ ]},
+ {block:"Mises en situation", draw:true, secs:[
+  {t:"1. Gestion d'imprévus techniques & logistiques", q:["Problème technique : mauvaise bande son, tous les autres artistes se changent, personne sur scène, que faites-vous ?","Mauvaise surprise : pas de coulisses, pas de scène en arrivant sur place. Comment réagis-tu ?","Tu ne trouves pas ton accessoire avant de rentrer sur scène, alors que tout le monde l'a. Que fais-tu ? Qu'attends-tu ?","Les lumières ne fonctionnent pas correctement et t'empêchent de voir une partie de la scène : comment t'adaptes-tu ?","Le costume que tu dois porter est déchiré 10 minutes avant le show : quelle est ta réaction ?","On te demande de raccourcir ou rallonger un numéro à la dernière minute : comment t'organises-tu ?"]},
+  {t:"2. Gestion du stress, endurance & performance sous fatigue", q:["Au bout de 4 jours de tournée avec 4 spectacles et plus de 2000 km, comment est ton 5ème ?","Mauvaise surprise : le public est très faible (10 personnes). Que se passe-t-il de ton côté ?","Bonne surprise : 1 million de spectateurs face à toi. Que se passe-t-il de ton côté ?","Tu n'es pas fier de ta prestation à la fin d'un show : comment gères-tu ?","Tu dois enchaîner deux shows très différents dans la même journée : comment conserves-tu ton énergie et ton focus ?","Tu apprends 1 heure avant de monter sur scène qu'un passage a été modifié : comment te prépares-tu mentalement ?","Tu sens que tu es à la limite physiquement (fatigue, douleur) pendant un show : comment gères-tu la performance sans te blesser ?"]},
+  {t:"3. Gestion des conflits & dynamique d'équipe", q:["Une engueulade éclate dans les coulisses entre deux artistes pendant un spectacle : que fais-tu ?","Un danseur de ton équipe oublie une partie de la chorégraphie et se trompe sur scène : comment réagis-tu pour maintenir l'unité ?","Un membre de la troupe critique ouvertement ton travail juste avant de monter sur scène : comment gères-tu la situation ?","On te demande de remplacer un danseur blessé 30 minutes avant le show : comment coopères-tu avec l'équipe pour t'adapter ?"]},
+  {t:"4. Professionnalisme & comportement après une performance", q:["Le spectacle vient de se terminer, que fais-tu ?","Après le show, un membre du public vient te faire une remarque négative : comment réagis-tu ?","L'organisateur du spectacle est stressé ou mécontent : comment gères-tu la communication ?","Tu dois ranger et aider à démonter une partie du matériel alors que tu es épuisé : quelle attitude adoptes-tu ?"]}
+ ]}
+];
+
+/* ---------- état ---------- */
+const S = {list:[], extras:{}, fiches:{}, filter:"all", query:"", current:null, mode:"airtable"};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $ = id => document.getElementById(id);
+function allCands(){ return S.list; }
+function active(){ return allCands().filter(c => !c.off); }
+function cand(id){ return allCands().find(c => c.id === id); }
+function display(c){ return [c.prenom, c.nom].filter(Boolean).join(" ") || "Sans nom"; }
+
+/* ---------- Airtable (via la fonction Netlify) ---------- */
+const API = "/.netlify/functions/casting";
+const SLOT_NAME = {s1:"Samedi 8h–12h", s2:"Samedi 13h–19h", s3:"Dimanche 8h–12h", s4:"Dimanche 13h–18h", na:"À définir"};
+const SLOT_KEY = Object.fromEntries(Object.entries(SLOT_NAME).map(([k,v]) => [v,k]));
+const AVIS_OUT = {oui:"Retenu", peut:"À revoir", non:"Non retenu"};
+const AVIS_IN = Object.fromEntries(Object.entries(AVIS_OUT).map(([k,v]) => [v,k]));
+// clé de la fiche -> champ Airtable
+const F = {cdc:"CDC", nom:"Nom", prenom:"Prénom", age:"Âge", ville:"Lieu de résidence", present:"Présent", avis:"Avis final",
+  comedie:"Comédie/Théâtre", danse:"Danse", danseAutre:"Danse – autre", compagnie:"Membre d'une autre compagnie", statut:"Statut",
+  motivation:"Motivation et passion", experiences:"Expérience(s)", diplomes:"Diplôme(s)", adaptabilite:"Adaptabilité et collaboration",
+  disponibilites:"Disponibilités", technique:"Technique", originalite:"Originalité du style", interpretation:"Interprétation artistique",
+  coherence:"Cohérence avec Pop-Corn Show", obsSolo:"Observations solo", obsGroupe:"Observations groupe", autresSpectacles:"Capacité autres spectacles"};
+function toAirtable(k, v){
+  if(k === "avis") return AVIS_OUT[v] || null;
+  if(k === "compagnie") return v === "oui" ? "Oui" : v === "non" ? "Non" : null;
+  if(k === "age"){ const n = parseInt(v, 10); return isNaN(n) ? null : n; }
+  if(k === "present" || k === "comedie") return !!v;
+  if(k === "danse") return Array.isArray(v) ? v : [];
+  if(["statut","technique","originalite","interpretation","coherence"].includes(k)) return v || null;
+  return v == null ? "" : String(v);
+}
+function fromRecord(r){
+  const f = r.fields || {};
+  const c = {id:r.id, slot:SLOT_KEY[f["Créneau"]] || "na", nom:f["Nom"] || "", prenom:f["Prénom"] || "", age:f["Âge"] ?? "", ville:f["Lieu de résidence"] || "",
+    note:f["Inscription"] === "Annulé" ? "" : (f["Note planning"] || ""), off:f["Inscription"] === "Annulé" ? (f["Note planning"] || "Annulé") : "", ordre:f["Ordre"] ?? 999};
+  const fi = {};
+  for(const [k, name] of Object.entries(F)){
+    let v = f[name];
+    if(k === "avis") v = AVIS_IN[v] || "";
+    else if(k === "compagnie") v = v === "Oui" ? "oui" : v === "Non" ? "non" : "";
+    if(v !== undefined) fi[k] = v;
+  }
+  if(f["Dernière modification"]) fi.updatedAt = f["Dernière modification"];
+  return {c, fi};
+}
+function getKey(){ try{ return localStorage.getItem("smooth-casting-key") || ""; }catch(e){ return ""; } }
+async function api(method, body, query){
+  const res = await fetch(API + (query || ""), {method, headers:{"content-type":"application/json","x-casting-key":getKey()}, body: body ? JSON.stringify(body) : undefined});
+  if(res.status === 401){ askKey(); throw {code:"auth"}; }
+  if(!res.ok) throw {code:"http", status:res.status, text: await res.text()};
+  return res.json();
+}
+function askKey(){
+  if($("key-dlg").open) return;
+  try{ $("key-dlg").showModal(); }catch(e){ $("key-dlg").setAttribute("open",""); }
+}
+$("key-form").addEventListener("submit", e => {
+  e.preventDefault();
+  try{ localStorage.setItem("smooth-casting-key", $("key-in").value.trim()); }catch(err){}
+  $("key-dlg").close(); load();
+});
+
+function setSync(t, bad){ const el = $("sync"); el.textContent = t; el.classList.toggle("bad", !!bad); }
+const timers = {}, pending = {};
+let saving = Promise.resolve();
+
+async function load(){
+  try{
+    const data = await api("GET");
+    const list = [], fiches = {};
+    data.records.forEach(r => { const {c, fi} = fromRecord(r); list.push(c); fiches[c.id] = fi; });
+    list.sort((a,b) => (a.ordre - b.ordre) || display(a).localeCompare(display(b), "fr"));
+    // garder les modifications locales pas encore envoyées
+    for(const id of Object.keys(pending)) if(S.fiches[id]) fiches[id] = S.fiches[id];
+    if(S.current && timers[S.current] && S.fiches[S.current]) fiches[S.current] = S.fiches[S.current];
+    S.list = list; S.fiches = fiches;
+    renderAll();
+    if(S.current && !timers[S.current] && !pending[S.current]) fillForm({...S.fiches[S.current]}, true);
+    setSync(Object.keys(pending).length ? "Modifications en attente…" : "Synchronisé avec Airtable");
+  }catch(e){
+    if(e.code !== "auth") setSync("Hors ligne · réessai automatique", true);
+  }
+}
+async function initStore(){
+  setSync("Chargement…");
+  renderAll();
+  await load();
+  setInterval(() => { if(document.visibilityState === "visible") { flushAll(); load(); } }, 20000);
+  document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") load(); });
+}
+function saveFiche(id, key){
+  (pending[id] = pending[id] || new Set()).add(key);
+  clearTimeout(timers[id]);
+  setSync("Enregistrement…");
+  timers[id] = setTimeout(() => { delete timers[id]; flush(id); }, 700);
+}
+function flushAll(){ Object.keys(pending).forEach(id => { if(!timers[id]) flush(id); }); }
+function flush(id){
+  const keys = pending[id]; if(!keys || !keys.size) return;
+  const fields = {};
+  keys.forEach(k => { fields[F[k]] = toAirtable(k, (S.fiches[id] || {})[k]); });
+  if(keys.has("nom") || keys.has("prenom")){ const c = cand(id); if(c) fields["Candidat"] = display(c); }
+  delete pending[id];
+  saving = saving.then(() => api("PATCH", {id, fields}))
+    .then(() => { markSaved(); setSync(Object.keys(pending).length ? "Enregistrement…" : "Synchronisé avec Airtable"); })
+    .catch(() => {
+      const set = pending[id] = pending[id] || new Set(); keys.forEach(k => set.add(k));
+      setSync("Hors ligne · modifications gardées, réessai automatique", true);
+    });
+}
+function markSaved(){ const el = $("saved"); if(el){ const d = new Date(); el.textContent = "Enregistré à " + d.getHours() + "h" + String(d.getMinutes()).padStart(2,"0"); } }
+async function addCand(c){
+  setSync("Ajout…");
+  try{
+    const r = await api("POST", {fields:{"Candidat":display(c), "Nom":c.nom, "Prénom":c.prenom, "Créneau":SLOT_NAME[c.slot], "Inscription":"Attendu", "Note planning":"Ajouté sur place"}});
+    const {c:nc, fi} = fromRecord(r); S.list.push(nc); S.fiches[nc.id] = fi; renderAll();
+    setSync("Synchronisé avec Airtable");
+  }catch(e){ setSync("Ajout impossible, vérifiez la connexion", true); }
+}
+async function delCand(){}
+window.addEventListener("beforeunload", e => { if(Object.keys(pending).length || Object.keys(timers).length){ flushAll(); e.preventDefault(); } });
+
+/* ---------- onglets ---------- */
+const TABS = ["planning","fiches","questions"];
+function showTab(t){
+  if(!TABS.includes(t)) t = "planning";
+  TABS.forEach(x => { $("v-"+x).hidden = x !== t; $("t-"+x).setAttribute("aria-selected", x === t); });
+  try{ history.replaceState(null, "", "#"+t); }catch(e){}
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => { if(b.dataset.tab === "fiches" && S.current) closeFiche(); showTab(b.dataset.tab); }));
+
+/* ---------- planning ---------- */
+function renderPlanning(){
+  const act = active();
+  const cnt = k => act.filter(c => c.slot === k).length;
+  const offN = allCands().filter(c => c.off).length;
+  const na = cnt("na");
+  $("counts").innerHTML =
+    `<span class="chip">Total attendus <b>${act.length - na}</b>${na ? ` + ${na} sans créneau` : ""}</span>` +
+    ["s1","s2","s3","s4"].map(k => `<span class="chip">${["Sam. matin","Sam. après-midi","Dim. matin","Dim. après-midi"][["s1","s2","s3","s4"].indexOf(k)]} <b>${cnt(k)}</b></span>`).join("") +
+    `<span class="chip">Annulés <b>${offN}</b></span>`;
+  const day = (title, keys) => {
+    const tot = keys.reduce((a,k) => a + cnt(k), 0);
+    return `<section class="day"><h2>${title} <span>${tot} attendus</span></h2><div class="slots">${keys.map(slotTable).join("")}</div></section>`;
+  };
+  $("planning-days").innerHTML = day("Samedi 24 octobre", ["s1","s2"]) + day("Dimanche 25 octobre", ["s3","s4"]) +
+    (cnt("na") ? `<section class="day"><h2>Sans créneau <span>à placer</span></h2><div class="slots">${slotTable("na")}</div></section>` : "");
+}
+function slotTable(k){
+  const list = allCands().filter(c => c.slot === k);
+  const on = list.filter(c => !c.off), off = list.filter(c => c.off);
+  const row = (c,i) => c.off
+    ? `<tr class="off"><td class="num">–</td><td class="last">${c.nom ? esc(c.nom) : '<span class="unk">non précisé</span>'}</td><td class="first">${esc(c.prenom)}</td><td class="note"><span class="tag">${esc(c.off)}</span> ${esc(c.note || "")}</td><td></td></tr>`
+    : `<tr class="row" tabindex="0" data-open="${esc(c.id)}" aria-label="Ouvrir la fiche de ${esc(display(c))}"><td class="num">${i+1}</td><td class="last">${c.nom ? esc(c.nom) : '<span class="unk">non précisé</span>'}</td><td class="first">${esc(c.prenom)}</td><td class="note">${esc(c.note || "")}</td><td class="go">${(S.fiches[c.id] || {}).avis ? avisPill(S.fiches[c.id]) : "›"}</td></tr>`;
+  return `<div class="slot"><div class="slot-head"><span class="time">${SLOTS[k].time}</span><span class="n">${on.length} candidat${on.length > 1 ? "s" : ""}</span></div>
+  <div class="tbl"><table><thead><tr><th>#</th><th>Nom</th><th>Prénom</th><th>Note</th><th></th></tr></thead><tbody>
+  ${on.map(row).join("")}${off.length ? `<tr class="sep"><td colspan="5">Annulé${off.length > 1 ? "s" : ""}</td></tr>` + off.map(row).join("") : ""}
+  </tbody></table></div></div>`;
+}
+
+/* ---------- liste des fiches ---------- */
+const FILTERS = [["all","Tous"],["s1","Sam. matin"],["s2","Sam. aprèm"],["s3","Dim. matin"],["s4","Dim. aprèm"],["todo","À évaluer"]];
+function renderFilters(){
+  $("filters").innerHTML = FILTERS.map(([k,l]) => `<button class="fbtn" type="button" data-f="${k}" aria-pressed="${S.filter === k}">${l}</button>`).join("");
+}
+$("filters").addEventListener("click", e => { const b = e.target.closest("[data-f]"); if(!b) return; S.filter = b.dataset.f; renderFilters(); renderList(); });
+$("q").addEventListener("input", e => { S.query = e.target.value.trim().toLowerCase(); renderList(); });
+
+function evaluated(f){ return f && CRITERES.some(([k]) => f[k]); }
+function avisPill(f){
+  const a = f && f.avis;
+  if(a === "oui") return '<span class="pill oui">Retenu</span>';
+  if(a === "peut") return '<span class="pill peut">À revoir</span>';
+  if(a === "non") return '<span class="pill non">Non retenu</span>';
+  return '<span class="pill vide">Pas d\'avis</span>';
+}
+function renderList(){
+  const q = S.query;
+  const list = active().filter(c => {
+    if(q && !display(c).toLowerCase().includes(q) && !(c.nom||"").toLowerCase().includes(q)) return false;
+    if(S.filter === "todo") return !evaluated(S.fiches[c.id]);
+    if(S.filter !== "all") return c.slot === S.filter;
+    return true;
+  });
+  const keys = ["s1","s2","s3","s4","na"];
+  const html = keys.map(k => {
+    const items = list.filter(c => c.slot === k);
+    if(!items.length) return "";
+    return `<div class="group"><h3>${SLOTS[k].label} · ${items.length}</h3><div class="cards">${items.map(card).join("")}</div></div>`;
+  }).join("");
+  $("groups").innerHTML = html || '<p class="empty">Aucun candidat ne correspond.</p>';
+}
+function card(c){
+  const f = S.fiches[c.id] || {};
+  const ini = ((c.prenom||"?")[0] + (c.nom ? c.nom[0] : "")).toUpperCase();
+  const g = CRITERES.map(([k]) => f[k] || "–").join(" · ");
+  return `<button class="card" type="button" data-open="${esc(c.id)}">
+    <span class="av">${esc(ini)}</span>
+    <span class="who"><div class="nm">${esc(display(c))}</div>
+      <div class="meta">${f.present ? '<span class="dot" title="Présent"></span>Présent ·' : ""}<span class="grades" title="Technique · Originalité · Interprétation · Cohérence">${g}</span></div></span>
+    ${avisPill(f)}</button>`;
+}
+$("groups").addEventListener("click", e => { const b = e.target.closest("[data-open]"); if(b) openFiche(b.dataset.open); });
+function fromPlanning(id){ showTab("fiches"); openFiche(id); }
+$("planning-days").addEventListener("click", e => { const r = e.target.closest("tr[data-open]"); if(r) fromPlanning(r.dataset.open); });
+$("planning-days").addEventListener("keydown", e => { if(e.key !== "Enter" && e.key !== " ") return; const r = e.target.closest("tr[data-open]"); if(r){ e.preventDefault(); fromPlanning(r.dataset.open); } });
+
+/* ---------- fiche ---------- */
+function opts(field, values, labels, cls){
+  return `<div class="opts" data-group="${field}">${values.map((v,i) => `<button type="button" class="opt ${cls ? cls[i] : ""}" data-field="${field}" data-val="${esc(v)}" aria-pressed="false">${esc(labels ? labels[i] : v)}</button>`).join("")}</div>`;
+}
+function txt(field, label, area){
+  const id = "f-" + field;
+  return `<div class="fld"><label for="${id}">${label}</label>${area ? `<textarea id="${id}" data-field="${field}"></textarea>` : `<input id="${id}" type="${field === "age" ? "number" : "text"}" data-field="${field}">`}</div>`;
+}
+function openFiche(id){
+  const c = cand(id); if(!c) return;
+  S.current = id;
+  const act = active(), idx = act.findIndex(x => x.id === id);
+  const prev = act[idx-1], next = act[idx+1];
+  $("f-list").hidden = true; const box = $("f-form"); box.hidden = false;
+  box.innerHTML = `<div class="fiche">
+   <div class="fhead">
+     <button class="btn ghost" type="button" id="back">← Tous les candidats</button>
+     <div class="fnav">
+       <button class="btn ghost" type="button" ${prev ? `data-open="${esc(prev.id)}"` : "disabled"}>‹ Précédent</button>
+       <button class="btn ghost" type="button" ${next ? `data-open="${esc(next.id)}"` : "disabled"}>Suivant ›</button>
+     </div>
+   </div>
+   <div><div class="eyebrow">${SLOTS[c.slot].label}${c.note ? " · " + esc(c.note) : ""}</div>
+     <h2>${esc(display(c))}</h2><span class="saved" id="saved"></span></div>
+
+   <section class="sect"><h3>Le jour J</h3>
+     <div class="grid2">
+       <div class="fld"><span class="lbl">Présence</span>${opts("present",["1"],["Présent(e)"])}</div>
+       <div class="fld"><span class="lbl">Avis final</span>${opts("avis",["oui","peut","non"],["Retenu","À revoir","Non retenu"],["oui","peut","non"])}</div>
+     </div>
+   </section>
+
+   <section class="sect"><h3>Identité</h3>
+     <div class="grid2">${txt("cdc","CDC")}${txt("nom","Nom")}${txt("prenom","Prénom")}${txt("age","Âge")}${txt("ville","Lieu de résidence")}</div>
+   </section>
+
+   <section class="sect"><h3>Compétence principale</h3>
+     <div class="fld"><span class="lbl">Comédie / Théâtre</span>${opts("comedie",["1"],["Comédie/Théâtre"])}</div>
+     <div class="fld"><span class="lbl">Danse (plusieurs choix possibles)</span>${opts("danse",DANSES)}</div>
+     ${txt("danseAutre","Autre")}
+     <div class="grid2">
+       <div class="fld"><span class="lbl">Membre d'une autre compagnie ?</span>${opts("compagnie",["oui","non"],["Oui","Non"])}</div>
+       <div class="fld"><span class="lbl">Statut</span>${opts("statut",["Intermittent","Auto-Entrepreneur","En cours"])}</div>
+     </div>
+   </section>
+
+   <section class="sect"><h3>Entretien</h3>
+     ${txt("motivation","Motivation et passion pour la danse",1)}
+     ${txt("experiences","Expérience(s)",1)}
+     ${txt("diplomes","Diplôme(s)",1)}
+     ${txt("adaptabilite","Adaptabilité et collaboration",1)}
+     ${txt("disponibilites","Disponibilités",1)}
+   </section>
+
+   <section class="sect"><h3>Évaluation solo</h3>
+     <p class="hint">AT · AB · B · TB</p>
+     <div>${CRITERES.map(([k,l]) => `<div class="rate"><span>${l}</span>${opts(k,NOTES)}</div>`).join("")}</div>
+     ${txt("obsSolo","Observations prestation solo",1)}
+   </section>
+
+   <section class="sect"><h3>Groupe &amp; suite</h3>
+     ${txt("obsGroupe","Observations prestation de groupe",1)}
+     ${txt("autresSpectacles","Capacité autres spectacles",1)}
+   </section>
+   ${S.extras[id] ? `<p><button class="danger" type="button" id="del">Supprimer ce candidat ajouté</button></p>` : ""}
+  </div>`;
+  const f = S.fiches[id] || {};
+  fillForm({nom:c.nom, prenom:c.prenom, age:c.age, ville:c.ville, ...f}, false);
+  $("back").onclick = closeFiche;
+  box.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openFiche(b.dataset.open));
+  if($("del")) $("del").onclick = () => delCand(id);
+  if(f.updatedAt){ const d = new Date(f.updatedAt); $("saved").textContent = "Dernière modif. " + d.toLocaleDateString("fr-FR") + " à " + d.getHours() + "h" + String(d.getMinutes()).padStart(2,"0"); }
+  window.scrollTo(0,0);
+}
+const MULTI = new Set(["danse"]), TOGGLE = new Set(["present","comedie"]);
+function fillForm(data, skipActive){
+  const box = $("f-form"); if(box.hidden) return;
+  box.querySelectorAll("input[data-field],textarea[data-field]").forEach(el => {
+    if(skipActive && el === document.activeElement) return;
+    const v = data[el.dataset.field]; el.value = v == null ? "" : v;
+  });
+  box.querySelectorAll(".opt[data-field]").forEach(b => {
+    const k = b.dataset.field, v = data[k];
+    const on = MULTI.has(k) ? Array.isArray(v) && v.includes(b.dataset.val) : TOGGLE.has(k) ? !!v : v === b.dataset.val;
+    b.setAttribute("aria-pressed", on);
+  });
+}
+function patch(k, v){
+  const id = S.current; if(!id) return;
+  const c = cand(id);
+  const base = S.fiches[id] || {nom:c.nom||"", prenom:c.prenom||"", age:c.age||"", ville:c.ville||""};
+  S.fiches[id] = {...base, [k]: v};
+  if(k === "nom" || k === "prenom"){ c[k] = v; saveFiche(id, k); const other = k === "nom" ? "prenom" : "nom"; if(S.fiches[id][other] === undefined){ S.fiches[id][other] = c[other]; } }
+  else saveFiche(id, k);
+}
+$("f-form").addEventListener("input", e => { const k = e.target.dataset && e.target.dataset.field; if(k) patch(k, e.target.value); });
+$("f-form").addEventListener("click", e => {
+  const b = e.target.closest(".opt[data-field]"); if(!b) return;
+  const k = b.dataset.field, v = b.dataset.val, cur = (S.fiches[S.current] || {})[k];
+  let nv;
+  if(MULTI.has(k)){ const arr = Array.isArray(cur) ? [...cur] : []; const i = arr.indexOf(v); i >= 0 ? arr.splice(i,1) : arr.push(v); nv = arr; }
+  else if(TOGGLE.has(k)) nv = !cur;
+  else nv = cur === v ? "" : v;
+  patch(k, nv);
+  fillForm(S.fiches[S.current], true);
+});
+function closeFiche(){
+  S.current = null; $("f-form").hidden = true; $("f-form").innerHTML = ""; $("f-list").hidden = false; renderList();
+}
+
+/* ---------- ajout ---------- */
+const dlg = $("add-dlg"); let addSlot = "s1";
+function renderAddSlots(){
+  $("a-slot").innerHTML = ["s1","s2","s3","s4","na"].map(k => `<button type="button" class="opt" data-s="${k}" aria-pressed="${addSlot === k}">${SLOTS[k].label}</button>`).join("");
+}
+$("a-slot").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if(b){ addSlot = b.dataset.s; renderAddSlots(); } });
+$("add-btn").onclick = () => { $("add-form").reset(); addSlot = "s1"; renderAddSlots(); try{ dlg.showModal(); }catch(e){ dlg.setAttribute("open",""); } };
+$("a-cancel").onclick = () => dlg.close();
+$("add-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const prenom = $("a-prenom").value.trim(), nom = $("a-nom").value.trim();
+  if(!prenom) return;
+  const id = "x-" + slug(prenom + "-" + nom) + "-" + Math.random().toString(36).slice(2,6);
+  addCand({id, slot:addSlot, nom, prenom, age:"", ville:"", note:"Ajouté sur place", off:""});
+  dlg.close();
+});
+
+/* ---------- questions ---------- */
+function renderQuestions(){
+  $("qs").innerHTML = Q.map((b,bi) => `<section class="qblock"><h2>${b.block}</h2>${b.secs.map((s,si) =>
+    `<div class="qsec"><h3>${esc(s.t)}</h3><ol>${s.q.map((q,qi) => `<li id="q-${bi}-${si}-${qi}">${esc(q)}</li>`).join("")}</ol></div>`).join("")}</section>`).join("");
+}
+$("draw-btn").onclick = () => {
+  const b = Q.findIndex(x => x.draw), pool = [];
+  Q[b].secs.forEach((s,si) => s.q.forEach((q,qi) => pool.push({s:s.t, q, id:`q-${b}-${si}-${qi}`})));
+  const p = pool[Math.floor(Math.random()*pool.length)];
+  $("draw").hidden = false; $("draw-lbl").textContent = p.s; $("draw-txt").textContent = p.q;
+  document.querySelectorAll(".qsec li.hl").forEach(li => li.classList.remove("hl"));
+  const li = document.getElementById(p.id); if(li) li.classList.add("hl");
+};
+
+function exportCSV(){
+  const cols=[["Créneau",c=>SLOTS[c.slot].label],["Nom",(c,f)=>f.nom??c.nom],["Prénom",(c,f)=>f.prenom??c.prenom],["Âge",(c,f)=>f.age??c.age],["Lieu de résidence",(c,f)=>f.ville??c.ville],["CDC",(c,f)=>f.cdc],["Présent",(c,f)=>f.present?"Oui":""],["Avis",(c,f)=>({oui:"Retenu",peut:"À revoir",non:"Non retenu"})[f.avis]||""],["Comédie/Théâtre",(c,f)=>f.comedie?"Oui":""],["Danse",(c,f)=>(f.danse||[]).join(", ")],["Autre",(c,f)=>f.danseAutre],["Autre compagnie",(c,f)=>f.compagnie],["Statut",(c,f)=>f.statut],["Motivation",(c,f)=>f.motivation],["Expériences",(c,f)=>f.experiences],["Diplômes",(c,f)=>f.diplomes],["Adaptabilité",(c,f)=>f.adaptabilite],["Disponibilités",(c,f)=>f.disponibilites],["Technique",(c,f)=>f.technique],["Originalité",(c,f)=>f.originalite],["Interprétation",(c,f)=>f.interpretation],["Cohérence Pop-Corn Show",(c,f)=>f.coherence],["Obs. solo",(c,f)=>f.obsSolo],["Obs. groupe",(c,f)=>f.obsGroupe],["Autres spectacles",(c,f)=>f.autresSpectacles]];
+  const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const lines=[cols.map(c=>q(c[0])).join(";")].concat(active().map(c=>{const f=S.fiches[c.id]||{};return cols.map(col=>q(col[1](c,f))).join(";");}));
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="fiches-auditions-smooth.csv";document.body.appendChild(a);a.click();a.remove();
+}
+$("csv-btn").onclick=exportCSV;
+$("csv-btn").hidden=false;
+function renderAll(){ renderPlanning(); renderFilters(); renderList(); }
+renderQuestions();
+showTab((location.hash || "").slice(1));
+initStore();
+</script>
+
+</body>
+</html>
